@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkyRoute Hub</title>
+    <style>
+        :root {
+            --bg-color: #EBECF0;
+            --text-main: #4A5568;
+            --text-muted: #A0AEC0;
+            --shadow-out: 8px 8px 16px #d1d2d6, -8px -8px 16px #ffffff;
+            --shadow-in: inset 4px 4px 8px #d1d2d6, inset -4px -4px 8px #ffffff;
+            --shadow-btn-active: inset 3px 3px 6px #d1d2d6, inset -3px -3px 6px #ffffff;
+            --accent-neon: #007AFF;
+        }
+
+        .dark-theme {
+            --bg-color: #1E2024;
+            --text-main: #E2E8F0;
+            --text-muted: #4A5568;
+            --shadow-out: 8px 8px 16px #131416, -8px -8px 16px #292c32;
+            --shadow-in: inset 4px 4px 8px #131416, inset -4px -4px 8px #292c32;
+            --shadow-btn-active: inset 3px 3px 6px #131416, inset -3px -3px 6px #292c32;
+            --accent-neon: #00E5FF;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.5s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .app-container { width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 20px; }
+
+        /* ХЕДЕР */
+        header { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        header h1 { font-size: 24px; font-weight: 700; margin: 0; letter-spacing: -0.5px; }
+        
+        .theme-btn {
+            background: var(--bg-color); border: none; width: 45px; height: 45px; border-radius: 50%;
+            box-shadow: var(--shadow-out); cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 18px; transition: all 0.3s ease;
+        }
+        .theme-btn:active { box-shadow: var(--shadow-btn-active); transform: scale(0.96); }
+
+        /* КАРТОЧКИ НЕОМОРФИЗМ */
+        .card { background: var(--bg-color); border-radius: 24px; padding: 20px; box-shadow: var(--shadow-out); transition: all 0.3s ease; }
+
+        /* СЕЛЕКТОРЫ */
+        .select-box {
+            width: 100%; padding: 16px; border: none; background: var(--bg-color);
+            box-shadow: var(--shadow-in); border-radius: 16px; color: var(--text-main);
+            font-size: 16px; font-weight: 600; outline: none; appearance: none; cursor: pointer;
+        }
+
+        /* ИНТЕРАКТИВНАЯ КАРТА */
+        .map-wrapper { position: relative; width: 100%; height: 220px; border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-in); background: var(--bg-color); }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+        /* КНОПКА РУЛЕТКИ */
+        .roll-btn {
+            width: 100%; background: var(--bg-color); color: var(--text-main); border: none;
+            padding: 18px; border-radius: 16px; font-size: 16px; font-weight: 700; letter-spacing: 0.5px;
+            box-shadow: var(--shadow-out); cursor: pointer; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .roll-btn:active { box-shadow: var(--shadow-btn-active); transform: scale(0.98); }
+
+        /* БОРТОВОЙ ЖУРНАЛ / ПАСПОРТ */
+        .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+        .stat-item { text-align: center; padding: 12px; box-shadow: var(--shadow-in); border-radius: 14px; }
+        .stat-val { font-size: 18px; font-weight: 700; color: var(--accent-neon); }
+        .stat-lbl { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+        /* БИЛЕТ */
+        .ticket {
+            display: none; animation: ticketShow 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            border-left: 4px dashed var(--text-muted);
+        }
+        @keyframes ticketShow { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        .ticket-route { display: flex; justify-content: space-between; align-items: center; margin: 15px 0; }
+        .airport-code { font-size: 28px; font-weight: 800; }
+        .aircraft-badge { font-size: 12px; padding: 4px 10px; box-shadow: var(--shadow-in); border-radius: 20px; font-weight: 600; }
+
+        .fav-btn { float: right; background: none; border: none; font-size: 20px; cursor: pointer; color: #FF453A; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <header>
+            <h1>SkyRoute</h1>
+            <button class="theme-btn" onclick="toggleTheme()">🌙</button>
+        </header>
+
+        <!-- АККАУНТ ПИЛОТА -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 700; font-size: 15px;">Лицензия Пилота</span>
+                <span id="pilotCallsign" style="font-weight: 800; color: var(--text-muted);">AFL197</span>
+            </div>
+            <div class="profile-grid">
+                <div class="stat-item"><div class="stat-val" id="pilotRank">Кадет</div><div class="stat-lbl">РАНГ</div></div>
+                <div class="stat-item"><div class="stat-val" id="pilotFlights">0</div><div class="stat-lbl">РЕЙСЫ</div></div>
+                <div class="stat-item"><div class="stat-val" id="pilotMiles">0</div><div class="stat-lbl">МИЛИ (NM)</div></div>
+                <div class="stat-item"><div class="stat-val">120 FPS</div><div class="stat-lbl">ДВИЖОК</div></div>
+            </div>
+        </div>
+
+        <!-- ВЫБОР АВИАКОМПАНИИ -->
+        <div class="card">
+            <select class="select-box" id="airlineSelect" onchange="selectAirline()">
+                <!-- Генерируется из JS -->
+            </select>
+        </div>
+
+        <!-- ЖИВАЯ КАРТА ПАУТИНЫ -->
+        <div class="map-wrapper">
+            <canvas id="routeMap"></canvas>
+        </div>
+
+        <!-- КНОПКА ГЕНЕРАТОРА -->
+        <button class="roll-btn" onclick="generateRandomFlight()">🎲 СЛУЧАЙНЫЙ РЕЙС</button>
+
+        <!-- МАРШРУТНЫЙ ЛИСТ -->
+        <div class="card ticket" id="ticketBlock">
+            <div style="font-size: 12px; font-weight: bold; color: var(--text-muted);" id="ticketAirline">VUELING</div>
+            <div class="ticket-route">
+                <div class="airport-code" id="ticketFrom">BCN</div>
+                <div style="color: var(--accent-neon); font-size: 24px;">➔</div>
+                <div class="airport-code" id="ticketTo">LEIB</div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+                <div>Дистанция: <strong id="ticketDist">240 NM</strong></div>
+                <div class="aircraft-badge" id="ticketAir">A320neo</div>
+            </div>
+            <button class="roll-btn" style="margin-top: 15px; background: var(--accent-neon); color: white; box-shadow: none;" onclick="acceptFlight()">Принять полет в бортжурнал</button>
+        </div>
+    </div>
+
+    <script>
+        // БАЗА ДАННЫХ: 10 АВИАКОМПАНИЙ И ИХ РЕАЛЬНЫЕ МАРШРУТЫ (С КООРДИНАТАМИ ДЛЯ КАРТЫ)
+        const airports = {
+            BCN: { x: 180, y: 95, name: "Barcelona" }, MAD: { x: 165, y: 98, name: "Madrid" }, PMI: { x: 185, y: 99, name: "Mallorca" }, IBZ: { x: 180, y: 103, name: "Ibiza" }, CDG: { x: 182, y: 78, name: "Paris" }, FCO: { x: 198, y: 96, name: "Rome" }, LGW: { x: 175, y: 70, name: "London Gatwick" }, AMS: { x: 185, y: 68, name: "Amsterdam" }, AGP: { x: 162, y: 107, name: "Malaga" }, ALC: { x: 172, y: 102, name: "Alicante" },
+            SVO: { x: 235, y: 55, name: "Moscow Sheremetyevo" }, LED: { x: 232, y: 42, name: "St. Petersburg" }, AER: { x: 233, y: 82, name: "Sochi" }, OVB: { x: 295, y: 58, name: "Novosibirsk" }, DXB: { x: 252, y: 120, name: "Dubai" }, IST: { x: 218, y: 85, name: "Istanbul" }, PEK: { x: 350, y: 75, name: "Beijing" },
+            FRA: { x: 190, y: 75, name: "Frankfurt" }, JFK: { x: 95, y: 82, name: "New York" }, HND: { x: 385, y: 82, name: "Tokyo Haneda" }, SIN: { x: 335, y: 165, name: "Singapore" }, ORD: { x: 75, y: 78, name: "Chicago" },
+            LHR: { x: 173, y: 70, name: "London Heathrow" }, EDI: { x: 168, y: 58, name: "Edinburgh" }, CPT: { x: 202, y: 205, name: "Cape Town" }, MIA: { x: 88, y: 115, name: "Miami" },
+            DOH: { x: 248, y: 121, name: "Doha" }, BKK: { x: 332, y: 140, name: "Bangkok" }, JNB: { x: 206, y: 195, name: "Johannesburg" }, SYD: { x: 400, y: 210, name: "Sydney" },
+            ATL: { x: 82, y: 92, name: "Atlanta" }, LAX: { x: 45, y: 90, name: "Los Angeles" }, MCO: { x: 86, y: 110, name: "Orlando" }, CUN: { x: 78, y: 122, name: "Cancun" },
+            STN: { x: 176, y: 68, name: "London Stansted" }, BUD: { x: 204, y: 82, name: "Budapest" }, KRK: { x: 206, y: 76, name: "Krakow" }, LIS: { x: 152, y: 103, name: "Lisbon" }
+        };
+
+        const airlines = [
+            { id: "VLG", name: "Vueling 🇪🇸", hub: "BCN", fleet: ["A320neo", "A321neo"], routes: [["BCN","MAD",260], ["BCN","PMI,120"], ["BCN","IBZ",150], ["BCN","CDG",460], ["BCN","FCO",460], ["BCN","LGW",630], ["BCN","AMS",670], ["BCN","AGP",410], ["BCN","ALC",220]] },
+            { id: "AFL", name: "Aeroflot 🇷🇺", hub: "SVO", fleet: ["SSJ100", "A320neo", "B777-300ER"], routes: [["SVO","LED",300], ["SVO","AER",740], ["SVO","OVB",1520], ["SVO","DXB",1980], ["SVO","IST",1130], ["SVO","PEK",3130]] },
+            { id: "DLH", name: "Lufthansa 🇩🇪", hub: "FRA", fleet: ["A320neo", "A350-900", "B747-8i"], routes: [["FRA","LHR",340], ["FRA","CDG",240], ["FRA","JFK",3350], ["FRA","HND",5040], ["FRA","SIN",5560], ["FRA","ORD",3770], ["FRA","DXB",2620]] },
+            { id: "UAE", name: "Emirates 🇦🇪", hub: "DXB", fleet: ["B777-300ER", "A380-800"], routes: [["DXB","LHR",2970], ["DXB","JFK",5240], ["DXB","LAX",7240], ["DXB","CDG",2830], ["DXB","SIN",3150], ["DXB","SYD",6500], ["DXB","SVO",1980]] },
+            { id: "BAW", name: "British Airways 🇬🇧", hub: "LHR", fleet: ["A320neo", "B777-200ER", "A350-1000"], routes: [["LHR","JFK",3000], ["LHR","LAX",4730], ["LHR","EDI",290], ["LHR","SIN",5930], ["LHR","DXB",2970], ["LHR","CPT",5230], ["LHR","MIA",3840]] },
+            { id: "QTR", name: "Qatar Airways 🇶🇦", hub: "DOH", fleet: ["A320neo", "A350-900", "B777-300ER"], routes: [["DOH","LHR",2840], ["DOH","CDG",2690], ["DOH","JFK",5380], ["DOH","SIN",3720], ["DOH","HND",4480], ["DOH","JNB",3520], ["DOH","SVO",1930]] },
+            { id: "AFR", name: "Air France 🇫🇷", hub: "CDG", fleet: ["A220-300", "A350-900", "B777-300ER"], routes: [["CDG","JFK",3150], ["CDG","LAX",4920], ["CDG","LHR",180], ["CDG","FCO",590], ["CDG","AMS",220], ["CDG","DXB",2830], ["CDG","BCN",460]] },
+            { id: "DAL", name: "Delta Air Lines 🇺🇸", hub: "ATL", fleet: ["B737-800", "A321neo", "A350-900"], routes: [["ATL","LAX",1680], ["ATL","LGA",660], ["ATL","ORD",530], ["ATL","MCO",350], ["ATL","LHR",3660], ["ATL","CDG",3810], ["ATL","CUN",770]] },
+            { id: "RYR", name: "Ryanair 🇮🇪", hub: "STN", fleet: ["B737-800", "B737-MAX8"], routes: [["STN","BCN",640], ["STN","FCO",770], ["STN","AGP",910], ["STN","BUD",790], ["STN","KRK",750], ["STN","LIS",850], ["STN","IBZ",710]] },
+            { id: "SIA", name: "Singapore Airlines 🇸🇬", hub: "SIN", fleet: ["A350-900ULR", "B777-300ER"], routes: [["SIN","LHR",5930], ["SIN","LAX",7620], ["SIN","JFK",8280], ["SIN","SYD",3390], ["SIN","HND",2870], ["SIN","FRA",5560], ["SIN","BKK",760]] }
+        ];
+
+        let pilotStats = { callsign: "AFL197", rank: "Кадет", flights: 0, miles: 0, favorites: [], theme: "light" };
+        let currentActiveRoute = null;
+
+        // ЗАГРУЗКА ДАННЫХ ПРОФИЛЯ
+        if(localStorage.getItem('skyRoutePilotData')) {
+            pilotStats = JSON.parse(localStorage.getItem('skyRoutePilotData'));
+            updateProfileUI();
+        }
+
+        // ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ С ЭФФЕКТОМ МОРФИНГА ТЕНЕЙ
+        function toggleTheme() {
+            document.body.classList.toggle('dark-theme');
+            pilotStats.theme = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
+            document.querySelector('.theme-btn').textContent = pilotStats.theme === 'dark' ? '☀️' : '🌙';
+            saveProfileData();
+            drawMap();
+        }
+        if(pilotStats.theme === 'dark') { document.body.classList.add('dark-theme'); document.querySelector('.theme-btn').textContent = '☀️'; }
+
+        function saveProfileData() { localStorage.setItem('skyRoutePilotData', JSON.stringify(pilotStats)); }
+
+        function updateProfileUI() {
+            document.getElementById('pilotFlights').textContent = pilotStats.flights;
+            document.getElementById('pilotMiles').textContent = pilotStats.miles;
+            
+            if(pilotStats.miles > 25000) pilotStats.rank = "Капитан (КВС)";
+            else if(pilotStats.miles > 10000) pilotStats.rank = "Старший Помощник";
+            else if(pilotStats.miles > 3000) pilotStats.rank = "Второй Пилот";
+            
+            document.getElementById('pilotRank').textContent = pilotStats.rank;
+        }
+
+        // РЕНДЕР СПИСКА КОМПАНИЙ С УЧЕТОМ ЛАЙКОВ
+        function buildAirlineSelect() {
+            const select = document.getElementById('airlineSelect');
+            select.innerHTML = '';
+            
+            // Сортировка: избранные летят наверх
+            const sorted = [...airlines].sort((a,b) => {
+                let aFav = pilotStats.favorites.includes(a.id) ? 1 : 0;
+                let bFav = pilotStats.favorites.includes(b.id) ? 1 : 0;
+                return bFav - aFav;
+            });
+
+            sorted.forEach(air => {
+                const isFav = pilotStats.favorites.includes(air.id) ? "💛 " : "✈️ ";
+                const opt = document.createElement('option');
+                opt.value = air.id;
+                opt.textContent = isFav + air.name;
+                select.appendChild(opt);
+            });
+        }
+
+        function selectAirline() { drawMap(); }
+
+        // ОТРИСОВКА КАРТЫ И "ПАУТИНЫ" РЕЙСОВ
+        const canvas = document.getElementById('routeMap');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            drawMap();
+        }
+        window.addEventListener('resize', resizeCanvas);
+        setTimeout(resizeCanvas, 100);
+
+        function drawMap(highlightTarget = null) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const isDark = document.body.classList.contains('dark-theme');
+            
+            const currentAirId = document.getElementById('airlineSelect').value;
+            const currentAir = airlines.find(a => a.id === currentAirId);
+            if(!currentAir) return;
+
+            const hub = airports[currentAir.hub];
+
+            // 1. Рисуем сетку виртуальной земли
+            ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)';
+            ctx.lineWidth = 1;
+            for(let i=0; i<canvas.width; i+=20) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
+            for(let j=0; j<canvas.height; j+=20) { ctx.beginPath(); ctx.moveTo(0,j); ctx.lineTo(canvas.width,j); ctx.stroke(); }
+
+            // 2. Рисуем паутину трасс авиакомпании
+            currentAir.routes.forEach(r => {
+                const dest = airports[r[1]];
+                if(!dest) return;
+
+                ctx.beginPath();
+                ctx.moveTo(hub.x, hub.y);
+                
+                // Делаем дугу (эффект кривизны земли)
+                let midX = (hub.x + dest.x) / 2;
+                let midY = (hub.y + dest.y) / 2 - 30;
+                ctx.quadraticCurveTo(midX, midY, dest.x, dest.y);
+
+                if (highlightTarget && r[1] === highlightTarget) {
+                    ctx.strokeStyle = '#30D158'; // Подсветка выбранного рейса зеленым неоном
+                    ctx.lineWidth = 3;
+                } else {
+                    ctx.strokeStyle = isDark ? 'rgba(0, 229, 255, 0.25)' : 'rgba(0, 122, 255, 0.2)';
+                    ctx.lineWidth = 1.5;
+                }
+                ctx.stroke();
+
+                // Точки назначения
+                ctx.beginPath();
+                ctx.arc(dest.x, dest.y, 3, 0, Math.PI*2);
+                ctx.fillStyle = isDark ? '#4A5568' : '#A0AEC0';
+                ctx.fill();
+            });
+
+            // 3. Подсвечиваем главный Хаб
+            ctx.beginPath();
+            ctx.arc(hub.x, hub.y, 6, 0, Math.PI*2);
+            ctx.fillStyle = isDark ? '#00E5FF' : '#007AFF';
+            ctx.fill();
+        }
+
+        // АВИА-РУЛЕТКА (ЭФФЕКТ СЛУЧАЙНОГО ВЫБОРА)
+        function generateRandomFlight() {
+            const currentAirId = document.getElementById('airlineSelect').value;
+            const currentAir = airlines.find(a => a.id === currentAirId);
+            const routes = currentAir.routes;
+            
+            let counter = 0;
+            let interval = setInterval(() => {
+                let randomRoute = routes[Math.floor(Math.random() * routes.length)];
+                drawMap(randomRoute[1]);
+                counter++;
+                
+                if(counter > 10) {
+                    clearInterval(interval);
+                    showFinalTicket(currentAir, randomRoute);
+                }
+            }, 100);
+        }
+
+        function showFinalTicket(airline, route) {
+            currentActiveRoute = route;
+            document.getElementById('ticketAirline').innerHTML = `${airline.name} <button class="fav-btn" onclick="toggleFavorite('${airline.id}')">${pilotStats.favorites.includes(airline.id) ? '💛' : '🤍'}</button>`;
+            document.getElementById('ticketFrom').textContent = airline.hub;
+            document.getElementById('ticketTo').textContent = route[1];
+            document.getElementById('ticketDist').textContent = route[2] + " NM";
+            document.getElementById('ticketAir').textContent = airline.fleet[Math.floor(Math.random() * airline.fleet.length)];
+            
+            document.getElementById('ticketBlock').style.display = 'block';
+        }
+
+        // СИСТЕМА ЛАЙКОВ
+        function toggleFavorite(id) {
+            if(pilotStats.favorites.includes(id)) {
+                pilotStats.favorites = pilotStats.favorites.filter(f => f !== id);
+            } else {
+                pilotStats.favorites.push(id);
+            }
+            saveProfileData();
+            buildAirlineSelect();
+            document.getElementById('airlineSelect').value = id;
+            drawMap();
+            document.querySelector('.fav-btn').textContent = pilotStats.favorites.includes(id) ? '💛' : '🤍';
+        }
+
+        // ФИКСАЦИЯ В БОРТЖУРНАЛ ПИЛОТА
+        function acceptFlight() {
+            if(!currentActiveRoute) return;
+            pilotStats.flights += 1;
+            pilotStats.miles += currentActiveRoute[2];
+            saveProfileData();
+            updateProfileUI();
+            
+            document.getElementById('ticketBlock').style.display = 'none';
+            drawMap();
+            alert(`✈️ Полет принят! Данные записаны. Твой новый налет: ${pilotStats.miles} миль!`);
+        }
+
+        // Старт
+        buildAirlineSelect();
+        updateProfileUI();
+    </script>
+</body>
+</html>
